@@ -1,126 +1,75 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Arrows Clone - Telegram Mini App</title>
     <style>
-        body { margin: 0; background-color: #343441; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; }
-        #level-text { font-size: 24px; margin-bottom: 20px; color: #a4a4b5; }
-        canvas { background-color: #343441; touch-action: none; border-radius: 10px; }
-        .win-msg { position: absolute; font-size: 32px; font-weight: bold; display: none; }
+        body { margin: 0; background-color: #3d3d4e; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        canvas { touch-action: none; border-radius: 5px; }
     </style>
 </head>
 <body>
-    <div id="level-text">Level 1</div>
-    <canvas id="gameCanvas"></canvas>
-    <div id="winMsg" class="win-msg">رائع! 🎉</div>
+    <canvas id="game"></canvas>
 
     <script>
-        const canvas = document.getElementById('gameCanvas');
+        const canvas = document.getElementById('game');
         const ctx = canvas.getContext('2d');
-        const winMsg = document.getElementById('winMsg');
 
-        // إعدادات الشبكة (Grid)
-        const gridSize = 60;
-        const rows = 6;
-        const cols = 5;
-        canvas.width = cols * gridSize;
-        canvas.height = rows * gridSize;
-
-        // تعريف الاتجاهات
-        const DIRS = {
-            'UP': { dx: 0, dy: -1, angle: -Math.PI/2 },
-            'DOWN': { dx: 0, dy: 1, angle: Math.PI/2 },
-            'LEFT': { dx: -1, dy: 0, angle: Math.PI },
-            'RIGHT': { dx: 1, dy: 0, angle: 0 }
+        // الألوان من الفيديو مباشرة
+        const COLORS = {
+            bg: '#3d3d4e',
+            arrow: '#7a7a8c',
+            active: '#ffffff',
+            grid: '#4a4a5a'
         };
 
-        // مصفوفة الأسهم (Level Data)
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const gridStep = 45; // المسافة بين النقاط
+        const offsetX = (canvas.width % gridStep) / 2;
+        const offsetY = (canvas.height % gridStep) / 2;
+
         let arrows = [
-            { x: 2, y: 1, dir: DIRS.RIGHT, status: 'static' },
-            { x: 4, y: 1, dir: DIRS.DOWN, status: 'static' },
-            { x: 4, y: 4, dir: DIRS.LEFT, status: 'static' },
-            { x: 2, y: 4, dir: DIRS.UP, status: 'static' },
-            { x: 2, y: 2, dir: DIRS.LEFT, status: 'static' }
+            { x: 5, y: 5, dir: 'UP', status: 'idle' },
+            { x: 5, y: 8, dir: 'RIGHT', status: 'idle' },
+            // يمكنك إضافة بقية الأسهم هنا بناءً على لقطات الفيديو
         ];
 
-        function drawArrow(arrow) {
-            const px = arrow.x * gridSize + gridSize/2;
-            const py = arrow.y * gridSize + gridSize/2;
-            
-            ctx.save();
-            ctx.translate(px, py);
-            ctx.rotate(arrow.dir.angle);
-            
-            // رسم السهم
-            ctx.beginPath();
-            ctx.strokeStyle = arrow.status === 'moving' ? '#ffffff' : '#6e6e7d';
-            ctx.lineWidth = 4;
-            ctx.lineJoin = 'round';
-            ctx.moveTo(-15, 0);
-            ctx.lineTo(15, 0);
-            ctx.lineTo(5, -10);
-            ctx.moveTo(15, 0);
-            ctx.lineTo(5, 10);
-            ctx.stroke();
-            
-            ctx.restore();
-        }
-
-        function isPathClear(target) {
-            for (let a of arrows) {
-                if (a === target || a.status === 'removed') continue;
-                
-                // منطق التصادم: هل يوجد سهم آخر في مسار السهم الحالي؟
-                if (target.dir.dx !== 0) { // حركة أفقية
-                    if (a.y === target.y && (target.dir.dx > 0 ? a.x > target.x : a.x < target.x)) return false;
-                } else { // حركة رأسية
-                    if (a.x === target.x && (target.dir.dy > 0 ? a.y > target.y : a.y < target.y)) return false;
+        function drawGrid() {
+            ctx.fillStyle = COLORS.grid;
+            for (let x = offsetX; x < canvas.width; x += gridStep) {
+                for (let y = offsetY; y < canvas.height; y += gridStep) {
+                    ctx.beginPath();
+                    ctx.arc(x, y, 1.5, 0, Math.PI * 2);
+                    ctx.fill();
                 }
             }
-            return true;
         }
 
-        function update() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        function drawArrow(a) {
+            const px = a.x * gridStep + offsetX;
+            const py = a.y * gridStep + offsetY;
             
-            let allRemoved = true;
-            arrows.forEach(a => {
-                if (a.status === 'moving') {
-                    a.x += a.dir.dx * 0.2;
-                    a.y += a.dir.dy * 0.2;
-                    // إذا خرج السهم عن الشاشة
-                    if (a.x < -1 || a.x > cols || a.y < -1 || a.y > rows) a.status = 'removed';
-                }
-                if (a.status !== 'removed') {
-                    drawArrow(a);
-                    allRemoved = false;
-                }
-            });
+            ctx.strokeStyle = a.status === 'moving' ? COLORS.active : COLORS.arrow;
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
 
-            if (allRemoved) winMsg.style.display = 'block';
-            requestAnimationFrame(update);
+            // رسم شكل السهم "المربع المنحني" كما في الفيديو
+            ctx.beginPath();
+            // (هنا يتم كتابة منطق رسم المسار الطويل خلف السهم)
+            // ... 
         }
 
-        canvas.addEventListener('touchstart', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            const touchX = (e.touches[0].clientX - rect.left) / gridSize;
-            const touchY = (e.touches[0].clientY - rect.top) / gridSize;
+        function animate() {
+            ctx.fillStyle = COLORS.bg;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            drawGrid();
+            arrows.forEach(drawArrow);
+            requestAnimationFrame(animate);
+        }
 
-            arrows.forEach(a => {
-                if (a.status === 'static' && Math.hypot(a.x + 0.5 - touchX, a.y + 0.5 - touchY) < 0.5) {
-                    if (isPathClear(a)) {
-                        a.status = 'moving';
-                    } else {
-                        // تأثير بصري بسيط عند الخطأ (هز السهم مثلاً)
-                        console.log("المسار مغلق!");
-                    }
-                }
-            });
-        });
-
-        update();
+        animate();
     </script>
 </body>
 </html>
