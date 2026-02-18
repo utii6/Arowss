@@ -3,134 +3,122 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Arrows Clone Exact</title>
+    <title>Arrows Pro - Telegram Mini App</title>
     <style>
-        body { margin: 0; background-color: #3d3d4e; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
-        canvas { touch-action: none; cursor: pointer; }
-        #ui { position: absolute; top: 15%; color: #7a7a8c; font-family: 'Arial', sans-serif; font-weight: bold; font-size: 28px; text-align: center; width: 100%; pointer-events: none; }
-        #ui span { display: block; font-size: 18px; margin-top: 5px; opacity: 0.7; }
+        body { margin: 0; background-color: #3d3d4e; overflow: hidden; display: flex; justify-content: center; align-items: center; font-family: sans-serif; }
+        canvas { touch-action: none; }
+        #ui { position: absolute; top: 12%; text-align: center; color: #7a7a8c; pointer-events: none; }
+        #ui h1 { margin: 0; font-size: 32px; letter-spacing: 1px; color: #8a8a9c; }
+        #ui p { margin: 5px 0; font-size: 16px; opacity: 0.7; }
     </style>
 </head>
 <body>
-    <div id="ui">Arrows<span>Level 265</span></div>
+    <div id="ui"><h1>Arrows</h1><p>Level 265</p></div>
     <canvas id="gameCanvas"></canvas>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
-        // ألوان الفيديو
+        // الألوان من الفيديو بدقة
         const COLORS = {
             bg: '#3d3d4e',
             dot: '#4a4a5a',
-            arrowIdle: '#7a7a8c',
-            arrowActive: '#ffffff'
+            idle: '#7a7a8c',
+            active: '#ffffff'
         };
 
-        let gridSpacing = 40;
+        const GRID = 45;
         let arrows = [];
 
         function init() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             
-            // توزيع الأسهم لمحاكاة الفيديو (يمكنك تعديل الإحداثيات هنا)
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            // بناء المستوى 265 (إحداثيات المسارات الملتفة كما في الفيديو)
             arrows = [
-                { x: 3, y: 5, dir: 'UP', status: 'idle', length: 40 },
-                { x: 5, y: 5, dir: 'RIGHT', status: 'idle', length: 40 },
-                { x: 5, y: 8, dir: 'DOWN', status: 'idle', length: 40 },
-                { x: 2, y: 8, dir: 'LEFT', status: 'idle', length: 40 },
-                { x: 4, y: 6, dir: 'UP', status: 'idle', length: 40 }
+                { 
+                    path: [{x: -2, y: 3}, {x: -2, y: -1}, {x: 3, y: -1}], 
+                    dir: 'RIGHT', status: 'idle' 
+                },
+                { 
+                    path: [{x: 2, y: 4}, {x: 2, y: 1}, {x: -1, y: 1}], 
+                    dir: 'LEFT', status: 'idle' 
+                }
             ];
         }
 
-        function drawBackground() {
-            ctx.fillStyle = COLORS.bg;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // رسم النقاط (Grid Dots)
-            ctx.fillStyle = COLORS.dot;
-            for (let x = gridSpacing/2; x < canvas.width; x += gridSpacing) {
-                for (let y = gridSpacing/2; y < canvas.height; y += gridSpacing) {
-                    ctx.beginPath();
-                    ctx.arc(x, y, 1.2, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            }
-        }
-
-        function drawArrowHead(x, y, angle, color) {
+        function drawProfessionalArrowHead(x, y, dir, color) {
             ctx.save();
             ctx.translate(x, y);
-            ctx.rotate(angle);
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 3.5;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-
+            
+            // تحديد زاوية الرأس
+            const angles = { 'UP': -Math.PI/2, 'DOWN': Math.PI/2, 'LEFT': Math.PI, 'RIGHT': 0 };
+            ctx.rotate(angles[dir]);
+            
+            ctx.fillStyle = color;
             ctx.beginPath();
-            ctx.moveTo(-10, -8);
-            ctx.lineTo(2, 0);
-            ctx.lineTo(-10, 8);
-            ctx.stroke();
+            // رسم رأس السهم "المصمت" بزويا منحنية (SVG Style)
+            ctx.moveTo(10, 0);
+            ctx.lineTo(-6, -9);
+            ctx.quadraticCurveTo(-3, 0, -6, 9); // انحناء خلفي ناعم
+            ctx.closePath();
+            ctx.fill();
             ctx.restore();
         }
 
-        function drawArrow(a) {
-            const px = a.x * gridSpacing + gridSpacing/2;
-            const py = a.y * gridSpacing + gridSpacing/2;
-            const color = a.status === 'moving' ? COLORS.arrowActive : COLORS.arrowIdle;
-            
-            let angle = 0;
-            if (a.dir === 'UP') angle = -Math.PI / 2;
-            if (a.dir === 'DOWN') angle = Math.PI / 2;
-            if (a.dir === 'LEFT') angle = Math.PI;
-            if (a.dir === 'RIGHT') angle = 0;
+        function draw() {
+            ctx.fillStyle = COLORS.bg;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // رسم ذيل السهم (الجسم)
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 3.5;
-            ctx.beginPath();
-            ctx.moveTo(px, py);
-            
-            // في الفيديو السهم يمتد، هنا نحسب موضع الرأس بناءً على طول السهم
-            let headX = px + Math.cos(angle) * 15;
-            let headY = py + Math.sin(angle) * 15;
-            
-            drawArrowHead(headX, headY, angle, color);
+            // 1. رسم شبكة النقاط
+            ctx.fillStyle = COLORS.dot;
+            for (let x = (canvas.width % GRID)/2; x < canvas.width; x += GRID) {
+                for (let y = (canvas.height % GRID)/2; y < canvas.height; y += GRID) {
+                    ctx.beginPath(); ctx.arc(x, y, 1.2, 0, Math.PI*2); ctx.fill();
+                }
+            }
+
+            const originX = canvas.width / 2;
+            const originY = canvas.height / 2;
+
+            // 2. رسم المسارات والأسهم
+            arrows.forEach(a => {
+                if (a.status === 'removed') return;
+
+                const color = a.status === 'moving' ? COLORS.active : COLORS.idle;
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 3.5;
+                ctx.lineJoin = 'round';
+                ctx.lineCap = 'round';
+
+                ctx.beginPath();
+                a.path.forEach((p, i) => {
+                    const px = originX + p.x * GRID;
+                    const py = originY + p.y * GRID;
+                    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+                });
+                ctx.stroke();
+
+                // رسم الرأس في نهاية المسار
+                const last = a.path[a.path.length - 1];
+                drawProfessionalArrowHead(originX + last.x * GRID, originY + last.y * GRID, a.dir, color);
+            });
+
+            requestAnimationFrame(draw);
         }
 
-        function update() {
-            drawBackground();
-            arrows.forEach(a => {
-                if (a.status === 'moving') {
-                    if (a.dir === 'UP') a.y -= 0.2;
-                    if (a.dir === 'DOWN') a.y += 0.2;
-                    if (a.dir === 'LEFT') a.x -= 0.2;
-                    if (a.dir === 'RIGHT') a.x += 0.2;
-                    
-                    if (a.x < -2 || a.x > 20 || a.y < -2 || a.y > 40) a.status = 'removed';
-                }
-                if (a.status !== 'removed') drawArrow(a);
-            });
-            requestAnimationFrame(update);
-        }
-
-        canvas.addEventListener('mousedown', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            const tx = (e.clientX - rect.left) / gridSpacing;
-            const ty = (e.clientY - rect.top) / gridSpacing;
-
-            arrows.forEach(a => {
-                if (Math.hypot(a.x + 0.5 - tx, a.y + 0.5 - ty) < 0.8) {
-                    a.status = 'moving';
-                }
-            });
+        canvas.addEventListener('touchstart', (e) => {
+            // منطق الضغط لتحريك السهم
+            arrows[0].status = 'moving'; 
+            // ملحوظة: هنا نضع منطق اكتشاف أي سهم تم لمسه
         });
 
-        window.addEventListener('resize', init);
         init();
-        update();
+        draw();
     </script>
 </body>
 </html>
